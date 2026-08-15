@@ -24,9 +24,12 @@ class GreenhouseCrawler(BaseCrawler):
     def parse(self, response):
         data = json.loads(response.text)
         for job in data.get("jobs", []):
+            departments = job.get("departments") or []
             yield self.build_item(
+                external_id=job.get("id"),
                 title=job.get("title"),
                 company=job.get("company_name"),
+                department=departments[0].get("name") if departments else None,
                 location=(job.get("location") or {}).get("name"),
                 url=job.get("absolute_url"),
                 description=job.get("content"),
