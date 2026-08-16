@@ -42,7 +42,11 @@ jobs:
 
       - name: Fail if any company 404'd
         run: |
-          if grep -q "'downloader/response_status_count/404'" crawl.log; then
-            echo "One or more new companies returned 404 - check the slug in greenhouse.yaml"
+          failed=$(grep -oE 'Crawled \(404\) <GET [^>]*/boards/[^/]+/jobs' crawl.log \
+            | sed -E 's#.*/boards/##; s#/jobs$##' | sort -u)
+          if [ -n "$failed" ]; then
+            while read -r company; do
+              echo "::error::Greenhouse company '$company' returned 404 - check the slug in greenhouse.yaml"
+            done <<< "$failed"
             exit 1
           fi
