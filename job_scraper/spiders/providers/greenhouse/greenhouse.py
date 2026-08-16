@@ -9,13 +9,18 @@ from job_scraper.spiders.providers.base import BaseCrawler
 
 
 class GreenhouseCrawler(BaseCrawler):
-    """Every company listed in greenhouse.yaml: scrapy crawl greenhouse"""
+    """Every company listed in greenhouse.yaml: scrapy crawl greenhouse
+    Pass -a companies=foo,bar to crawl only those companies."""
 
     name = "greenhouse"
 
+    def __init__(self, *args: object, companies: str | None = None, **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)
+        self.companies_filter = companies.split(",") if companies else None
+
     async def start(self) -> AsyncGenerator[scrapy.Request, None]:
         config = self.load_config("greenhouse")
-        for company in config["companies"]:
+        for company in self.companies_filter or config["companies"]:
             url = f"https://boards-api.greenhouse.io/v1/boards/{company}/jobs?content=true"
             yield scrapy.Request(url, callback=self.parse)
 

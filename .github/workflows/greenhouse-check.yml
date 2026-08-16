@@ -1,0 +1,52 @@
+name: greenhouse-check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "job_scraper/spiders/providers/greenhouse/greenhouse.yaml"
+
+jobs:
+  diff-companies:
+    runs-on: ubuntu-latest
+    outputs:
+      companies: ${{ steps.diff.outputs.companies }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - id: diff
+        run: |
+          added=$(git diff "origin/${{ github.base_ref }}...HEAD" -- job_scraper/spiders/providers/greenhouse/greenhouse.yaml \
+            | grep -E '^\+  - ' | sed -E 's/^\+  - //' | paste -sd, -)
+          echo "companies=$added" >> "$GITHUB_OUTPUT"
+          echo "Added companies: $added"
+
+  scrape-check:
+    needs: diff-companies
+    if: needs.diff-companies.outputs.companies != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - run: pip install -r requirements.txt
+
+      - run: |
+          scrapy crawl greenhouse -a companies="${{ needs.diff-companies.outputs.companies }}" \
+            -o new-companies.json 2>&1 | tee crawl.log
+
+      - name: Fail if any company 404'd
+        run: |
+          failed=$(grep -oE 'Crawled \(404\) <GET [^>]*/boards/[^/]+/jobs' crawl.log \
+            | sed -E 's#.*/boards/##; s#/jobs$##' | sort -u)
+          if [ -n "$failed" ]; then
+            while read -r company; do
+              echo "::error::Greenhouse company '$company' returned 404 - check the slug in greenhouse.yaml"
+            done <<< "$failed"
+            exit 1
+          fi

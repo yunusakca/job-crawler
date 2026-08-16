@@ -16,7 +16,7 @@ ADDONS = {}
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-#USER_AGENT = "job_scraper (+http://www.yourdomain.com)"
+USER_AGENT = "job_scraper (+https://github.com/yunusakca/job-crawler)"
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True
