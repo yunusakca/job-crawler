@@ -1,0 +1,51 @@
+name: greenhouse-check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "job_scraper/spiders/providers/greenhouse/greenhouse.yaml"
+
+jobs:
+  diff-companies:
+    runs-on: ubuntu-latest
+    outputs:
+      companies: ${{ steps.diff.outputs.companies }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - id: diff
+        run: |
+          added=$(git diff "origin/${{ github.base_ref }}...HEAD" -- job_scraper/spiders/providers/greenhouse/greenhouse.yaml \
+            | grep -E '^\+  - ' | sed -E 's/^\+  - //' | paste -sd, -)
+          echo "companies=$added" >> "$GITHUB_OUTPUT"
+          echo "Added companies: $added"
+
+  scrape-check:
+    needs: diff-companies
+    if: needs.diff-companies.outputs.companies != ''
+    runs-on: ubuntu-latest
+    # Requires manual approval from a required reviewer on this environment
+    # before the job (and its outbound requests) runs.
+    environment: greenhouse-scrape
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - run: pip install -r requirements.txt
+
+      - run: |
+          scrapy crawl greenhouse -a companies="${{ needs.diff-companies.outputs.companies }}" \
+            -o new-companies.json 2>&1 | tee crawl.log
+
+      - name: Fail if any company 404'd
+        run: |
+          if grep -q "'downloader/response_status_count/404'" crawl.log; then
+            echo "One or more new companies returned 404 - check the slug in greenhouse.yaml"
+            exit 1
+          fi
