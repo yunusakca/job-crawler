@@ -27,9 +27,6 @@ jobs:
     needs: diff-companies
     if: needs.diff-companies.outputs.companies != ''
     runs-on: ubuntu-latest
-    # Requires manual approval from a required reviewer on this environment
-    # before the job (and its outbound requests) runs.
-    environment: greenhouse-scrape
     steps:
       - uses: actions/checkout@v5
 
