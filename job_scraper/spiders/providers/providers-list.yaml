@@ -1,0 +1,4 @@
+providers:
+  greenhouse:
+    path_to_yaml: greenhouse/greenhouse.yaml
+    module: GreenhouseCrawler

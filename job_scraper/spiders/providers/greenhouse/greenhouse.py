@@ -2,24 +2,19 @@ import json
 
 import scrapy
 
-from .base import BaseCrawler
+from job_scraper.spiders.providers.base import BaseCrawler
 
 
 class GreenhouseCrawler(BaseCrawler):
-    """Any company on Greenhouse's job board: scrapy crawl greenhouse -a company=gitlab"""
+    """Every company listed in greenhouse.yaml: scrapy crawl greenhouse"""
 
     name = "greenhouse"
-    source = "greenhouse"
-
-    def __init__(self, company=None, *args, **kwargs):
-        if not company:
-            raise ValueError("usage: scrapy crawl greenhouse -a company=<slug>")
-        self.company = company
-        super().__init__(*args, **kwargs)
 
     async def start(self):
-        url = f"https://boards-api.greenhouse.io/v1/boards/{self.company}/jobs?content=true"
-        yield scrapy.Request(url, callback=self.parse)
+        config = self.load_config("greenhouse")
+        for company in config["companies"]:
+            url = f"https://boards-api.greenhouse.io/v1/boards/{company}/jobs?content=true"
+            yield scrapy.Request(url, callback=self.parse)
 
     def parse(self, response):
         data = json.loads(response.text)
