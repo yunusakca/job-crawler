@@ -1,7 +1,10 @@
 import json
+from collections.abc import AsyncGenerator, Generator
 
 import scrapy
+from scrapy.http import Response
 
+from job_scraper.items import JobItem
 from job_scraper.spiders.providers.base import BaseCrawler
 
 
@@ -10,13 +13,13 @@ class GreenhouseCrawler(BaseCrawler):
 
     name = "greenhouse"
 
-    async def start(self):
+    async def start(self) -> AsyncGenerator[scrapy.Request, None]:
         config = self.load_config("greenhouse")
         for company in config["companies"]:
             url = f"https://boards-api.greenhouse.io/v1/boards/{company}/jobs?content=true"
             yield scrapy.Request(url, callback=self.parse)
 
-    def parse(self, response):
+    def parse(self, response: Response) -> Generator[JobItem, None, None]:
         data = json.loads(response.text)
         for job in data.get("jobs", []):
             departments = job.get("departments") or []
